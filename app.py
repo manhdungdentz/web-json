@@ -33,14 +33,21 @@ if uploaded_file:
     else:
         df = pd.read_csv(uploaded_file)
     
-  # Ép tất cả về kiểu chữ trước khi dịch thời gian (Thêm dòng này vào dòng 37)
-    df['Thời gian'] = df['Thời gian'].astype(str)
+  # 1. Ép tất cả về string và bỏ khoảng trắng dư thừa
+    df['Thời gian'] = df['Thời gian'].astype(str).str.strip()
     
-    # Dịch sang ngày tháng (Đây là dòng 38 mới)
-    df['Thời gian_DT'] = pd.to_datetime(df['Thời gian'], errors='coerce')
+    # 2. Định nghĩa hàm ép kiểu an toàn
+    def safe_convert_date(x):
+        try:
+            return pd.to_datetime(x, errors='coerce')
+        except:
+            return pd.NaT
+
+    # 3. Ép kiểu từng dòng một (Chậm nhưng cực chắc, trị dứt điểm mixed inputs)
+    df['Thời gian_DT'] = df['Thời gian'].apply(safe_convert_date)
     
-    # Xóa dòng lỗi (Đây là dòng 39 mới)
-    df = df.dropna(subset=['Thời gian_DT']) 
+    # 4. Xóa dòng lỗi
+    df = df.dropna(subset=['Thời gian_DT'])
     
     # --- BỘ LỌC SIDEBAR ---
     st.sidebar.header("⚙️ Bộ lọc")
