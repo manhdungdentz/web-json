@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Xem Dữ Liệu Từng File</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f2f5; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        select { padding: 10px; width: 100%; max-width: 400px; margin-bottom: 20px; border-radius: 5px; }
+        .chart-box { height: 500px; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Chọn file bạn muốn xem:</h2>
+    <select id="filePicker" onchange="drawData(this.value)">
+        <option value="">-- Click để chọn file --</option>
+        <option value="Lich nho giotj.json">1. Lịch nhỏ giọt</option>
+        <option value="Lịch sử nhỏ giọt AH4.json">2. Lịch sử AH4</option>
+        <option value="Quan trắc thực địa.json">3. Quan trắc thực địa</option>
+    </select>
+
+    <div class="chart-box">
+        <canvas id="myChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let currentChart = null;
+
+    async function drawData(fileName) {
+        if (!fileName) return;
+        
+        const res = await fetch(fileName);
+        const data = await res.json();
+
+        // Lấy trục X là thời gian
+        const labels = data.map(item => item["Thời gian"]);
+        
+        // Tự động lọc ra các cột là số (EC, pH, N, P, K, Lưu lượng...)
+        const firstItem = data[0];
+        const datasets = [];
+        const colors = ['#2563eb', '#dc2626', '#16a34a', '#ca8a04', '#9333ea', '#0891b2'];
+        
+        let i = 0;
+        for (let key in firstItem) {
+            // Chỉ vẽ những cột có giá trị là số và không phải STT hay ID
+            if (!['_id', 'STT', 'Thời gian', 'Tên khu'].includes(key)) {
+                const values = data.map(item => parseFloat(item[key]) || 0);
+                if (!isNaN(values[0])) {
+                    datasets.push({
+                        label: key,
+                        data: values,
+                        borderColor: colors[i % colors.length],
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: false
+                    });
+                    i++;
+                }
+            }
+        }
+
+        // Vẽ biểu đồ
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (currentChart) currentChart.destroy();
+        
+        currentChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { x: { ticks: { maxTicksLimit: 15 } } }
+            }
+        });
+    }
+</script>
+</body>
+</html>
