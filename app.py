@@ -33,9 +33,14 @@ if uploaded_file:
     else:
         df = pd.read_csv(uploaded_file)
     
-    # Chuẩn hóa thời gian gốc
+  # Ép tất cả về kiểu chữ trước khi dịch thời gian (Thêm dòng này vào dòng 37)
+    df['Thời gian'] = df['Thời gian'].astype(str)
+    
+    # Dịch sang ngày tháng (Đây là dòng 38 mới)
     df['Thời gian_DT'] = pd.to_datetime(df['Thời gian'], errors='coerce')
-    df = df.dropna(subset=['Thời gian_DT'])
+    
+    # Xóa dòng lỗi (Đây là dòng 39 mới)
+    df = df.dropna(subset=['Thời gian_DT']) 
     
     # --- BỘ LỌC SIDEBAR ---
     st.sidebar.header("⚙️ Bộ lọc")
