@@ -33,21 +33,23 @@ if uploaded_file:
     else:
         df = pd.read_csv(uploaded_file)
     
-    # 4. XỬ LÝ THỜI GIAN (Đã sửa lỗi mixed inputs)
+  # 1. Ép về kiểu chuỗi và làm sạch khoảng trắng
     df['Thời gian'] = df['Thời gian'].astype(str).str.strip()
     
-    def force_convert_date(x):
+    # 2. Định nghĩa hàm chuyển đổi an toàn
+    def final_date_convert(x):
         try:
-            return pd.to_datetime(x, errors='coerce', dayfirst=True)
+            # Thử chuyển đổi với format hỗn hợp và ưu tiên ngày trước tháng sau
+            return pd.to_datetime(x, dayfirst=True, errors='coerce')
         except:
             return pd.NaT
 
-    df['Thời gian_DT'] = df['Thời gian'].apply(force_convert_date)
+    # 3. Chuyển đổi và loại bỏ dữ liệu lỗi NGAY LẬP TỨC
+    # Thay vì dùng pd.to_datetime cho cả cột, ta dùng .apply để xử lý từng ô
+    df['Thời gian_DT'] = df['Thời gian'].apply(final_date_convert)
+    
+    # 4. Xóa các dòng không thể chuyển đổi thành ngày tháng
     df = df.dropna(subset=['Thời gian_DT'])
-    df['Thời gian_DT'] = pd.to_datetime(df['Thời gian_DT'])
-
-    # 5. BỘ LỌC SIDEBAR
-    st.sidebar.header("⚙️ Bộ lọc")
     min_date = df['Thời gian_DT'].min().date()
     max_date = df['Thời gian_DT'].max().date()
     start_date = st.sidebar.date_input("Từ ngày", min_date)
