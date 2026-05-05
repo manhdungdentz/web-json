@@ -47,12 +47,7 @@ if uploaded_file:
     # 3. Áp dụng chuyển đổi và xóa bỏ dữ liệu lỗi
     df['Thời gian_DT'] = df['Thời gian'].apply(force_convert_date)
     df = df.dropna(subset=['Thời gian_DT'])
-    
-    # 4. Đảm bảo dữ liệu là kiểu ngày tháng thực thụ trước khi lọc
     df['Thời gian_DT'] = pd.to_datetime(df['Thời gian_DT'])
-    
-    # 4. Xóa dòng lỗi
-    df = df.dropna(subset=['Thời gian_DT'])
     
     # --- BỘ LỌC SIDEBAR ---
     st.sidebar.header("⚙️ Bộ lọc")
@@ -69,7 +64,7 @@ if uploaded_file:
     # Nút bấm lọc
     if st.sidebar.button("BẤM ĐỂ LỌC"):
         # Lọc dữ liệu thô
-        mask = (df['Thời gian_DT'].dt.date >= start_date) & (df['Thời gian_DT'].dt.date <= end_date)
+        mask = (pd.to_datetime(df['Thời gian_DT']).dt.date >= start_date) & (pd.to_datetime(df['Thời gian_DT']).dt.date <= end_date)
         df_filtered = df.loc[mask]
         
         # Áp dụng Seed để xáo trộn bảng hiển thị
