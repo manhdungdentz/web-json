@@ -6,7 +6,7 @@ import re
 # 1. Cấu hình trang
 st.set_page_config(page_title="Hệ thống Dữ liệu Tưới", layout="wide")
 
-# 2. Hàm xử lý dữ liệu nén (EC, PH...)
+# 2. Hàm xử lý dữ liệu nén
 def parse_complex_data(row, col_name, base_date):
     content = str(row[col_name])
     if not content or content == "0" or content == "nan":
@@ -23,33 +23,23 @@ def parse_complex_data(row, col_name, base_date):
 
 st.title("🌿 Ứng dụng Phân tích Dữ liệu Tưới Nhỏ Giọt")
 
-# 3. NÚT TẢI FILE (Quan trọng nhất - Thiếu dòng này sẽ bị NameError)
+# 3. NÚT TẢI FILE
 uploaded_file = st.file_uploader("Chọn file dữ liệu", type=['json', 'csv'])
 
 if uploaded_file:
- # Đọc dữ liệu
+    # Đọc dữ liệu
     if uploaded_file.name.endswith('.json'):
         df = pd.read_json(uploaded_file)
     else:
         df = pd.read_csv(uploaded_file)
     
-    # --- LỚP 1: ÉP KIỂU TỪNG DÒNG ---
-    def final_convert(x):
-        try:
-            return pd.to_datetime(str(x).strip(), dayfirst=True, errors='coerce')
-        except:
-            return pd.NaT
-
-    df['Thời gian_DT'] = df['Thời gian'].apply(final_convert)
-    
-    # --- LỚP 2: XÓA DÒNG LỖI VÀ ÉP KIỂU CỨNG ---
+    # --- SỬA LỖI TẠI ĐÂY ---
+    # Ép kiểu an toàn bằng errors='coerce', rác sẽ thành NaT chứ không gây lỗi đỏ
+    df['Thời gian_DT'] = pd.to_datetime(df['Thời gian'], dayfirst=True, errors='coerce')
     df = df.dropna(subset=['Thời gian_DT'])
-    df['Thời gian_DT'] = pd.to_datetime(df['Thời gian_DT']) # Ép lần cuối để kích hoạt .dt
-
+    
     # --- BỘ LỌC SIDEBAR ---
     st.sidebar.header("⚙️ Bộ lọc")
-    
-    # Lấy ngày nhỏ nhất và lớn nhất an toàn
     min_date = df['Thời gian_DT'].dt.date.min()
     max_date = df['Thời gian_DT'].dt.date.max()
     
@@ -58,14 +48,21 @@ if uploaded_file:
     seed_val = st.sidebar.number_input("Table Seed", value=42)
 
     if st.sidebar.button("BẤM ĐỂ LỌC"):
-        # --- LỚP 3: LỌC DỮ LIỆU AN TOÀN ---
-        # Chuyển đổi sang kiểu date trước khi so sánh để tránh lệch kiểu dữ liệu
-        current_dates = df['Thời gian_DT'].dt.date
-        mask = (current_dates >= start_date) & (current_dates <= end_date)
+        # Lọc dữ liệu
+        mask = (df['Thời gian_DT'].dt.date >= start_date) & (df['Thời gian_DT'].dt.date <= end_date)
         df_filtered = df.loc[mask].copy()
 
+        # Tạo Tab hiển thị (Bạn bị thiếu phần định nghĩa Tab này trong code cũ)
+        tab1, tab2 = st.tabs(["📈 Biểu đồ chi tiết", "📋 Bảng dữ liệu"])
+
+        with tab2:
+            st.subheader("Dữ liệu sau khi lọc")
+            st.dataframe(df_filtered.sample(frac=1, random_state=seed_val), use_container_width=True)
+
         with tab1:
-            complex_cols = [c for c in df.columns if "/" in str(df[c].iloc[-1])]
+            # Tự động tìm các cột chứa dấu "/" (như EC/PH...)
+            complex_cols = [c for c in df.columns if df[c].astype(str).str.contains('/').any()]
+            
             if complex_cols:
                 target_col = st.selectbox("Chọn chỉ số:", complex_cols)
                 chart_list = []
@@ -77,5 +74,7 @@ if uploaded_file:
                     df_plot = pd.DataFrame(chart_list).sort_values('Thời gian')
                     fig = px.line(df_plot, x='Thời gian', y='Giá trị', color='Khu', markers=True)
                     st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("Không có dữ liệu chi tiết cho mục này.")
             else:
-                st.info("Không tìm thấy dữ liệu nén để vẽ biểu đồ.")
+                st.info("Không tìm thấy dữ liệu nén (có dấu /) để vẽ biểu đồ.")
