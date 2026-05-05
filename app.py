@@ -27,46 +27,42 @@ st.title("🌿 Ứng dụng Phân tích Dữ liệu Tưới Nhỏ Giọt")
 uploaded_file = st.file_uploader("Chọn file dữ liệu", type=['json', 'csv'])
 
 if uploaded_file:
-    # Đọc dữ liệu
+ # Đọc dữ liệu
     if uploaded_file.name.endswith('.json'):
         df = pd.read_json(uploaded_file)
     else:
         df = pd.read_csv(uploaded_file)
     
-  # 1. Ép về kiểu chuỗi và làm sạch khoảng trắng
-    df['Thời gian'] = df['Thời gian'].astype(str).str.strip()
-    
-    # 2. Định nghĩa hàm chuyển đổi an toàn
-    def final_date_convert(x):
+    # --- LỚP 1: ÉP KIỂU TỪNG DÒNG ---
+    def final_convert(x):
         try:
-            # Thử chuyển đổi với format hỗn hợp và ưu tiên ngày trước tháng sau
-            return pd.to_datetime(x, dayfirst=True, errors='coerce')
+            return pd.to_datetime(str(x).strip(), dayfirst=True, errors='coerce')
         except:
             return pd.NaT
 
-    # 3. Chuyển đổi và loại bỏ dữ liệu lỗi NGAY LẬP TỨC
-    # Thay vì dùng pd.to_datetime cho cả cột, ta dùng .apply để xử lý từng ô
-    df['Thời gian_DT'] = df['Thời gian'].apply(final_date_convert)
+    df['Thời gian_DT'] = df['Thời gian'].apply(final_convert)
     
-    # 4. Xóa các dòng không thể chuyển đổi thành ngày tháng
+    # --- LỚP 2: XÓA DÒNG LỖI VÀ ÉP KIỂU CỨNG ---
     df = df.dropna(subset=['Thời gian_DT'])
-    min_date = df['Thời gian_DT'].min().date()
-    max_date = df['Thời gian_DT'].max().date()
+    df['Thời gian_DT'] = pd.to_datetime(df['Thời gian_DT']) # Ép lần cuối để kích hoạt .dt
+
+    # --- BỘ LỌC SIDEBAR ---
+    st.sidebar.header("⚙️ Bộ lọc")
+    
+    # Lấy ngày nhỏ nhất và lớn nhất an toàn
+    min_date = df['Thời gian_DT'].dt.date.min()
+    max_date = df['Thời gian_DT'].dt.date.max()
+    
     start_date = st.sidebar.date_input("Từ ngày", min_date)
     end_date = st.sidebar.date_input("Đến ngày", max_date)
     seed_val = st.sidebar.number_input("Table Seed", value=42)
 
     if st.sidebar.button("BẤM ĐỂ LỌC"):
-        # Lọc theo ngày
-        mask = (df['Thời gian_DT'].dt.date >= start_date) & (df['Thời gian_DT'].dt.date <= end_date)
+        # --- LỚP 3: LỌC DỮ LIỆU AN TOÀN ---
+        # Chuyển đổi sang kiểu date trước khi so sánh để tránh lệch kiểu dữ liệu
+        current_dates = df['Thời gian_DT'].dt.date
+        mask = (current_dates >= start_date) & (current_dates <= end_date)
         df_filtered = df.loc[mask].copy()
-        
-        # Hiển thị
-        tab1, tab2 = st.tabs(["📈 Biểu đồ chi tiết", "📋 Bảng dữ liệu"])
-        
-        with tab2:
-            st.subheader("Dữ liệu gốc")
-            st.dataframe(df_filtered.sample(frac=1, random_state=seed_val), use_container_width=True)
 
         with tab1:
             complex_cols = [c for c in df.columns if "/" in str(df[c].iloc[-1])]
