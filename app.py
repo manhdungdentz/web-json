@@ -34,7 +34,8 @@ if uploaded_file:
         df = pd.read_csv(uploaded_file)
     
     # Chuẩn hóa thời gian gốc
-    df['Thời gian_DT'] = pd.to_datetime(df['Thời gian'])
+    df['Thời gian_DT'] = pd.to_datetime(df['Thời gian'], errors='coerce')
+    df = df.dropna(subset=['Thời gian_DT'])
     
     # --- BỘ LỌC SIDEBAR ---
     st.sidebar.header("⚙️ Bộ lọc")
